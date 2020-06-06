@@ -98,6 +98,7 @@ parser.add_argument('--aug-plus', action='store_true',
 parser.add_argument('--cos', action='store_true',
                     help='use cosine lr schedule')
 
+parser.add_argument('--trainval', action='store_true', help='use val in train')
 parser.add_argument('--save-path', type=str, help='where to save the checkpoints')
 
 def main():
@@ -220,6 +221,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # Data loading code
     traindir = os.path.join(args.data, 'train')
+    if args.trainval:
+        traindir = os.path.join(args.data, 'trainval')
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     if args.aug_plus:

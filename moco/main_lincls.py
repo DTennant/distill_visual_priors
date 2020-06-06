@@ -81,6 +81,7 @@ parser.add_argument('--pretrained', default='', type=str,
                     help='path to moco pretrained checkpoint')
 
 parser.add_argument('--save-path', type=str, help='where to save the checkpoints')
+parser.add_argument('--trainval', action='store_true', help='how to train')
 
 best_acc1 = 0
 
@@ -244,6 +245,10 @@ def main_worker(gpu, ngpus_per_node, args):
     # Data loading code
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
+    if args.trainval:
+        traindir = os.path.join(args.data, 'trainval')
+        valdir = os.path.join(args.data, 'test/labeled')
+        
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
