@@ -82,6 +82,7 @@ parser.add_argument('--pretrained', default='', type=str,
 
 parser.add_argument('--save-path', type=str, help='where to save the checkpoints')
 parser.add_argument('--trainval', action='store_true', help='how to train')
+parser.add_argument('--input-res', type=int, default=224)
 
 best_acc1 = 0
 
@@ -257,7 +258,7 @@ def main_worker(gpu, ngpus_per_node, args):
     train_dataset = datasets.ImageFolder(
         traindir,
         transforms.Compose([
-            transforms.RandomResizedCrop(224),
+            transforms.RandomResizedCrop(args.input_res),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             normalize,

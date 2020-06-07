@@ -98,6 +98,8 @@ parser.add_argument('--aug-plus', action='store_true',
 parser.add_argument('--cos', action='store_true',
                     help='use cosine lr schedule')
 
+parser.add_argument('--input-res', type=int, help='resolution for input', default=224)
+
 parser.add_argument('--trainval', action='store_true', help='use val in train')
 parser.add_argument('--save-path', type=str, help='where to save the checkpoints')
 parser.add_argument('--brainpp', action='store_true', help='On brainpp or not')
@@ -231,7 +233,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.aug_plus:
         # MoCo v2's aug: similar to SimCLR https://arxiv.org/abs/2002.05709
         augmentation = [
-            transforms.RandomResizedCrop(224, scale=(0.2, 1.)),
+            transforms.RandomResizedCrop(args.input_res, scale=(0.2, 1.)),
             transforms.RandomApply([
                 transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
             ], p=0.8),
@@ -244,7 +246,7 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         # MoCo v1's aug: the same as InstDisc https://arxiv.org/abs/1805.01978
         augmentation = [
-            transforms.RandomResizedCrop(224, scale=(0.2, 1.)),
+            transforms.RandomResizedCrop(args.input_res, scale=(0.2, 1.)),
             transforms.RandomGrayscale(p=0.2),
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
             transforms.RandomHorizontalFlip(),
