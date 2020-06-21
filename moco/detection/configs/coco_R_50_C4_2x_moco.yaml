@@ -7,3 +7,13 @@ MODEL:
     STRIDE_IN_1X1: False
 INPUT:
   FORMAT: "RGB"
+DATASETS:
+  TRAIN: ("vip_coco_trainval",)
+  TEST: ("vip_coco_test",)
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.01
+TEST:
+  EVAL_PERIOD: 1000
+
+  

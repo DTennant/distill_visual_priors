@@ -9,6 +9,7 @@ from detectron2.engine import DefaultTrainer, default_argument_parser, default_s
 from detectron2.evaluation import COCOEvaluator, PascalVOCDetectionEvaluator
 from detectron2.layers import get_norm
 from detectron2.modeling.roi_heads import ROI_HEADS_REGISTRY, Res5ROIHeads
+from detectron2.data.datasets import register_coco_instances
 
 
 @ROI_HEADS_REGISTRY.register()
@@ -47,6 +48,10 @@ def setup(args):
 
 
 def main(args):
+    register_coco_instances("vip_coco_trainval", {}, "/data/vipriors-challenges-toolkit/object-detection/data/annotations/vip-trainval.json", 
+                                                "/data/vipriors-challenges-toolkit/object-detection/data/images")
+    register_coco_instances("vip_coco_test", {}, "/data/vipriors-challenges-toolkit/object-detection/data/annotations/vip-test.json", 
+                                                "/data/vipriors-challenges-toolkit/object-detection/data/val2017")
     cfg = setup(args)
 
     if args.eval_only:
