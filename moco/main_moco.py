@@ -106,6 +106,9 @@ parser.add_argument('--brainpp', action='store_true', help='On brainpp or not')
 parser.add_argument('--train_json', type=str, help='path to train nori json')
 parser.add_argument('--val_json', type=str, help='path to val nori json')
 
+parser.add_argument('--smallbank', action='store_true')
+parser.add_argument('--small_margin', type=float, default=0.4, help='the margin')
+
 def main():
     args = parser.parse_args()
 
@@ -164,9 +167,16 @@ def main_worker(gpu, ngpus_per_node, args):
                                 world_size=args.world_size, rank=args.rank)
     # create model
     print("=> creating model '{}'".format(args.arch))
-    model = moco.builder.MoCo(
-        models.__dict__[args.arch],
-        args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
+    
+    if not args.smallbank:
+        model = moco.builder.MoCo(
+            models.__dict__[args.arch],
+            args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
+    else:
+        model = moco.builder.MoCo_smallbank(
+            models.__dict__[args.arch],
+            args.moco_dim, args.small_margin, args.moco_t
+        )
     print(model)
 
     if args.distributed:
@@ -208,12 +218,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
-            if args.gpu is None:
-                checkpoint = torch.load(args.resume)
-            else:
-                # Map model to be loaded to specified single gpu.
-                loc = 'cuda:{}'.format(args.gpu)
-                checkpoint = torch.load(args.resume, map_location=loc)
+            checkpoint = torch.load(args.resume, map_location='cpu')
             args.start_epoch = checkpoint['epoch']
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])

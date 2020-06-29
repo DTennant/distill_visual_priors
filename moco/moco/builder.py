@@ -2,6 +2,56 @@
 import torch
 import torch.nn as nn
 
+class MoCo_smallbank(nn.Module):
+    """
+    Build a MoCo model with: a query encoder, a key encoder, and a queue
+    https://arxiv.org/abs/1911.05722
+    """
+    def __init__(self, base_encoder, dim=128, margin=0.4, T=0.07, mlp=False):
+        """
+        dim: feature dimension (default: 128)
+        T: softmax temperature (default: 0.07)
+        """
+        super().__init__()
+
+        self.margin = self.margin
+        self.T = T
+
+        # create the encoders
+        # num_classes is the output fc dimension
+        self.encoder_q = base_encoder(num_classes=dim)
+        # self.encoder_k = base_encoder(num_classes=dim)
+
+        if mlp:  # hack: brute-force replacement
+            dim_mlp = self.encoder_q.fc.weight.shape[1]
+            self.encoder_q.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.fc)
+
+    def forward(self, im_q, im_k):
+        # compute query features
+        q = self.encoder_q(im_q)  # queries: NxC
+        q = nn.functional.normalize(q, dim=1)
+
+        k = self.encoder_q(im_k)  # keys: NxC
+        k = nn.functional.normalize(k, dim=1)
+
+        # positive logits: Nx1
+        l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
+        # negative logits: NxK
+        l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
+        # logits: Nx(1+K)
+        logits = torch.cat([l_pos, l_neg], dim=1)
+        
+        # adding the margin
+        labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
+        lb_views = labels.view(-1, 1)
+        if lb_views.is_cuda: lb_views = lb_views.cpu()
+        delt_costh = torch.zeros(logits.size()).scatter_(1, lb_views, self.margin)
+        delt_costh = delt_costh.cuda()
+        logits_m = logits - delt_costh
+
+        logits /= self.T
+
+        return logits, labels
 
 class MoCo(nn.Module):
     """
