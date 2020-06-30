@@ -107,6 +107,7 @@ parser.add_argument('--train_json', type=str, help='path to train nori json')
 parser.add_argument('--val_json', type=str, help='path to val nori json')
 
 parser.add_argument('--smallbank', action='store_true')
+parser.add_argument('--batch_k', action='store_true')
 parser.add_argument('--small_margin', type=float, default=0.4, help='the margin')
 
 def main():
@@ -168,15 +169,20 @@ def main_worker(gpu, ngpus_per_node, args):
     # create model
     print("=> creating model '{}'".format(args.arch))
     
-    if not args.smallbank:
+    if args.smallbank:
+        model = moco.builder.MoCo_smallbank(
+            models.__dict__[args.arch],
+            args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.small_margin, args.mlp 
+        )
+    elif args.batch_k:
+        model = moco.builder.MoCo_batch(
+            models.__dict__[args.arch],
+            args.modo_dim, args.small_margin, args.moco_t, args.mlp
+        )
+    else:
         model = moco.builder.MoCo(
             models.__dict__[args.arch],
             args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
-    else:
-        model = moco.builder.MoCo_smallbank(
-            models.__dict__[args.arch],
-            args.moco_dim, args.small_margin, args.moco_t
-        )
     print(model)
 
     if args.distributed:

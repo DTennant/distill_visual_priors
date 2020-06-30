@@ -2,19 +2,11 @@
 import torch
 import torch.nn as nn
 
-class MoCo_smallbank(nn.Module):
-    """
-    Build a MoCo model with: a query encoder, a key encoder, and a queue
-    https://arxiv.org/abs/1911.05722
-    """
+class MoCo_batch(nn.Module):
     def __init__(self, base_encoder, dim=128, margin=0.4, T=0.07, mlp=False):
-        """
-        dim: feature dimension (default: 128)
-        T: softmax temperature (default: 0.07)
-        """
         super().__init__()
 
-        self.margin = self.margin
+        self.margin = margin
         self.T = T
 
         # create the encoders
@@ -36,10 +28,15 @@ class MoCo_smallbank(nn.Module):
 
         # positive logits: Nx1
         l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
-        # negative logits: NxK
-        l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
-        # logits: Nx(1+K)
+        # negative logits: NxN-1
+        l_neg = torch.mm(q, k.T)
+        assert l_neg.shape[0] == l_neg.shape[1]
+        l_neg = torch.cat([torch.cat([l_neg[i][:i], l_neg[i][i+1:]]).unsqueeze(0) for i in range(l_neg.shape[0])])
+        assert l_neg.shape[0] == l_neg.shape[1] + 1
+
+        # logits: NxN
         logits = torch.cat([l_pos, l_neg], dim=1)
+        assert logits.shape[0] == logits.shape[1]
         
         # adding the margin
         labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
@@ -49,9 +46,9 @@ class MoCo_smallbank(nn.Module):
         delt_costh = delt_costh.cuda()
         logits_m = logits - delt_costh
 
-        logits /= self.T
+        logits_m /= self.T
 
-        return logits, labels
+        return logits_m, labels
 
 class MoCo(nn.Module):
     """
@@ -229,6 +226,41 @@ class MoCo(nn.Module):
             k = nn.functional.normalize(k, dim=1)
             k = self._batch_unshuffle_ddp(k, idx_unshuffle)
         return q, k
+
+class MoCo_smallbank(MoCo):
+    def __init__(self, base_encoder, dim=128, K=65536, m=0.999, T=0.07, margin=0.4, mlp=False):
+        self.margin = margin
+        super().__init__(base_encoder, dim, K, m, T, mlp)
+
+    def forward(self, im_q, im_k):
+        q = self.encoder_q(im_q)  # queries: NxC
+        q = nn.functional.normalize(q, dim=1)
+
+        with torch.no_grad():  # no gradient to keys
+            self._momentum_update_key_encoder()  # update the key encoder
+            im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
+            k = self.encoder_k(im_k)  # keys: NxC
+            k = nn.functional.normalize(k, dim=1)
+            k = self._batch_unshuffle_ddp(k, idx_unshuffle)
+
+        l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
+        l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
+
+        logits = torch.cat([l_pos, l_neg], dim=1)
+
+        # adding the margin
+        labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
+        lb_views = labels.view(-1, 1)
+        if lb_views.is_cuda: lb_views = lb_views.cpu()
+        delt_costh = torch.zeros(logits.size()).scatter_(1, lb_views, self.margin)
+        delt_costh = delt_costh.cuda()
+        logits_m = logits - delt_costh
+
+        logits_m /= self.T
+        self._dequeue_and_enqueue(k)
+
+        return logits_m, labels
+        
 
 # utils
 @torch.no_grad()
