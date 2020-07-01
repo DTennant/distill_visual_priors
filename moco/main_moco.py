@@ -25,6 +25,7 @@ import torchvision.models as models
 
 import moco.loader
 import moco.builder
+import resnet
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -100,6 +101,8 @@ parser.add_argument('--cos', action='store_true',
 
 parser.add_argument('--input-res', type=int, help='resolution for input', default=224)
 
+parser.add_argument('--save-freq', type=int, default=10)
+
 parser.add_argument('--trainval', action='store_true', help='use val in train')
 parser.add_argument('--save-path', type=str, help='where to save the checkpoints')
 parser.add_argument('--brainpp', action='store_true', help='On brainpp or not')
@@ -109,6 +112,9 @@ parser.add_argument('--val_json', type=str, help='path to val nori json')
 parser.add_argument('--smallbank', action='store_true')
 parser.add_argument('--batch_k', action='store_true')
 parser.add_argument('--small_margin', type=float, default=0.4, help='the margin')
+
+parser.add_argument('--use-width', action='store_true')
+parser.add_argument('--width', type=float, default=2.0, help='the width for resnet')
 
 def main():
     args = parser.parse_args()
@@ -168,20 +174,26 @@ def main_worker(gpu, ngpus_per_node, args):
                                 world_size=args.world_size, rank=args.rank)
     # create model
     print("=> creating model '{}'".format(args.arch))
+
+    if args.use_width:
+        from functools import partial
+        backbone = partial(resnet.model_dict[args.arch], width=args.width)
+    else:
+        backbone = models.__dict__[args.arch]
     
     if args.smallbank:
         model = moco.builder.MoCo_smallbank(
-            models.__dict__[args.arch],
+            backbone,
             args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.small_margin, args.mlp 
         )
     elif args.batch_k:
         model = moco.builder.MoCo_batch(
-            models.__dict__[args.arch],
+            backbone,
             args.modo_dim, args.small_margin, args.moco_t, args.mlp
         )
     else:
         model = moco.builder.MoCo(
-            models.__dict__[args.arch],
+            backbone,
             args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
     print(model)
 
@@ -296,7 +308,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
-            if epoch % 10 != 0 and epoch != 199: continue
+            if epoch % args.save_freq != 0 and epoch != 199: continue
             save_checkpoint({
                 'epoch': epoch + 1,
                 'arch': args.arch,
