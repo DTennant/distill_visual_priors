@@ -21,3 +21,10 @@ def get_sample_list_from_json(json_path):
     for info in j['info_dicts']:
         samples.append((info['nori_id'], info['label']))
     return samples
+
+def get_num_class_from_json(json_path):
+    j = json.load(open(json_path, 'r'))
+    try:
+        return len(j['label2tag'])
+    except KeyError:
+        return j['nr_class']

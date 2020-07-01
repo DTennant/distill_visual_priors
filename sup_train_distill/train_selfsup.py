@@ -111,16 +111,19 @@ def main():
                                            normalize])
                                        )
 
+    num_classes = len(train_dataset.classes)
     if args.brainpp:
         assert args.train_json is not None
         assert args.val_json is not None
-        from nori_util import get_img, get_sample_list_from_json
+        from nori_util import get_img, get_sample_list_from_json, get_num_class_from_json
         train_samples = get_sample_list_from_json(args.train_json)
         train_dataset.samples = train_samples
         train_dataset.loader = get_img
         val_samples = get_sample_list_from_json(args.val_json)
         val_dataset.samples = val_samples
         val_dataset.loader = get_img
+
+        num_classes = get_num_class_from_json(args.train_json)
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                                num_workers=args.workers, pin_memory=True, sampler=None)
@@ -134,8 +137,8 @@ def main():
         t_net = ResNet.resnet152(pretrained=True)
         s_net = ResNet.resnet50(pretrained=False)
     elif args.net_type == 'self_sup':
-        t_net = ResNet.resnet50(pretrained=False)
-        s_net = ResNet.resnet50(pretrained=False)
+        t_net = ResNet.resnet50(pretrained=False, num_classes=num_classes)
+        s_net = ResNet.resnet50(pretrained=False, num_classes=num_classes)
         # load from pre-trained, before DistributedDataParallel constructor
         if args.pretrained:
             if os.path.isfile(args.pretrained):
@@ -161,82 +164,11 @@ def main():
                 print("=> loaded pre-trained model '{}'".format(args.pretrained))
             else:
                 print("=> no checkpoint found at '{}'".format(args.pretrained))
-    elif args.net_type == 'self_sup_rx50':
-        s_net = tv.models.resnext50_32x4d(pretrained=False)
-        # load from pre-trained, before DistributedDataParallel constructor
-        if args.pretrained:
-            if os.path.isfile(args.pretrained):
-                print("=> loading checkpoint '{}'".format(args.pretrained))
-                checkpoint = torch.load(args.pretrained, map_location="cpu")
-
-                # rename moco pre-trained keys
-                state_dict = checkpoint['state_dict']
-                for k in list(state_dict.keys()):
-                    # retain only encoder_q up to before the embedding layer
-                    if k.startswith('module.encoder_q') and not k.startswith('module.encoder_q.fc'):
-                        # remove prefix
-                        state_dict[k[len("module.encoder_q."):]] = state_dict[k]
-                    # delete renamed or unused k
-                    del state_dict[k]
-
-                args.start_epoch = 0
-                msg = s_net.load_state_dict(state_dict, strict=False)
-                assert set(msg.missing_keys) == {"fc.weight", "fc.bias"}
-
-                print("=> loaded pre-trained model '{}'".format(args.pretrained))
-            else:
-                print("=> no checkpoint found at '{}'".format(args.pretrained))
-            
-    elif args.net_type == 'self_sup_rx101':
-        s_net = tv.models.resnext101_32x8d(pretrained=False)
-        # load from pre-trained, before DistributedDataParallel constructor
-        if args.pretrained:
-            if os.path.isfile(args.pretrained):
-                print("=> loading checkpoint '{}'".format(args.pretrained))
-                checkpoint = torch.load(args.pretrained, map_location="cpu")
-
-                # rename moco pre-trained keys
-                state_dict = checkpoint['state_dict']
-                for k in list(state_dict.keys()):
-                    # retain only encoder_q up to before the embedding layer
-                    if k.startswith('module.encoder_q') and not k.startswith('module.encoder_q.fc'):
-                        # remove prefix
-                        state_dict[k[len("module.encoder_q."):]] = state_dict[k]
-                    # delete renamed or unused k
-                    del state_dict[k]
-
-                args.start_epoch = 0
-                msg = s_net.load_state_dict(state_dict, strict=False)
-                assert set(msg.missing_keys) == {"fc.weight", "fc.bias"}
-
-                print("=> loaded pre-trained model '{}'".format(args.pretrained))
-            else:
-                print("=> no checkpoint found at '{}'".format(args.pretrained))
             
     elif args.net_type == 'infomin_self':
         from collections import OrderedDict
-        t_net = ResNet.resnet50(pretrained=False)
-        s_net = ResNet.resnet50(pretrained=False)
-        if args.pretrained:
-            ckpt = torch.load(args.pretrained, map_location='cpu')
-            state_dict = ckpt['model']
-            encoder_state_dict = OrderedDict()
-            for k, v in state_dict.items():
-                k = k.replace('module.', '')
-                if 'encoder' in k:
-                    k = k.replace('encoder.', '')
-                    encoder_state_dict[k] = v
-
-            msg = t_net.load_state_dict(encoder_state_dict, strict=False)
-            print(set(msg.missing_keys))
-            msg = s_net.load_state_dict(encoder_state_dict, strict=False)
-            print(set(msg.missing_keys))
-    elif args.net_type == 'infomin_selfrx50':
-        from collections import OrderedDict
-        # t_net = ResNet.resnet50(pretrained=False)
-        # s_net = ResNet.resnet50(pretrained=False)
-        s_net = tv.models.resnext50_32x4d(pretrained=False)
-        t_net = tv.models.resnext50_32x4d(pretrained=False)
+        t_net = ResNet.resnet50(pretrained=False, num_classes=num_classes)
+        s_net = ResNet.resnet50(pretrained=False, num_classes=num_classes)
         if args.pretrained:
             ckpt = torch.load(args.pretrained, map_location='cpu')
             state_dict = ckpt['model']
@@ -252,7 +184,11 @@ def main():
             msg = s_net.load_state_dict(encoder_state_dict, strict=False)
             print(set(msg.missing_keys))
     elif args.net_type == 'r50':
-        s_net = ResNet.resnet50(False)
+        s_net = ResNet.resnet50(pretrained=False, num_classes=num_classes)
+    elif args.net_type == 'r50_inpretrain':
+        s_net = ResNet.resnet50(pretrained=True)
+        fc_dim = s_net.fc.weight.shape[1]
+        s_net.fc = torch.nn.Linear(fc_dim, num_classes)
     else:
         print('undefined network type !!!')
         raise
@@ -260,10 +196,6 @@ def main():
     if not args.no_tea:
         d_net = distiller.Distiller(t_net, s_net)
 
-    # print ('Teacher Net: ')
-    # print(t_net)
-    # print ('Student Net: ')
-    # print(s_net)
     if not args.no_tea:
         print('the number of teacher model parameters: {}'.format(sum([p.data.nelement() for p in t_net.parameters()])))
     print('the number of student model parameters: {}'.format(sum([p.data.nelement() for p in s_net.parameters()])))
@@ -279,7 +211,7 @@ def main():
     if not args.label_smooth:
         criterion_CE = nn.CrossEntropyLoss().cuda()
     else:
-        criterion_CE = CrossEntropyLabelSmooth(num_classes=1000)
+        criterion_CE = CrossEntropyLabelSmooth(num_classes=num_classes)
     if not args.no_tea:
         optimizer = torch.optim.SGD(list(s_net.parameters()) + list(d_net.module.Connectors.parameters()), args.lr,
                                     momentum=args.momentum, weight_decay=args.weight_decay, nesterov=True)
