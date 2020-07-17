@@ -103,11 +103,7 @@ parser.add_argument('--input-res', type=int, help='resolution for input', defaul
 
 parser.add_argument('--save-freq', type=int, default=10)
 
-parser.add_argument('--trainval', action='store_true', help='use val in train')
 parser.add_argument('--save-path', type=str, help='where to save the checkpoints')
-parser.add_argument('--brainpp', action='store_true', help='On brainpp or not')
-parser.add_argument('--train_json', type=str, help='path to train nori json')
-parser.add_argument('--val_json', type=str, help='path to val nori json')
 
 parser.add_argument('--smallbank', action='store_true')
 parser.add_argument('--batch_k', action='store_true')
@@ -249,8 +245,6 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # Data loading code
     traindir = os.path.join(args.data, 'train')
-    if args.trainval:
-        traindir = os.path.join(args.data, 'trainval')
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     if args.aug_plus:
@@ -281,13 +275,6 @@ def main_worker(gpu, ngpus_per_node, args):
         traindir,
         moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
 
-    if args.brainpp:
-        assert args.train_json is not None
-        # assert args.val_json is not None
-        from nori_util import get_img, get_sample_list_from_json
-        train_samples = get_sample_list_from_json(args.train_json)
-        train_dataset.samples = train_samples
-        train_dataset.loader = get_img
         
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)

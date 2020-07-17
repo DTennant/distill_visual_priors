@@ -13,7 +13,6 @@ import numpy as np
 import gc
 
 from autoaug import AutoAugment, Cutout
-import models.MobileNet as Mov
 import models.ResNet as ResNet
 import distiller
 
@@ -60,10 +59,6 @@ parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
 parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight decay (default: 1e-4)')
 parser.add_argument('--print_freq', default=100, type=int, help='print frequency (default: 100)')
 parser.add_argument('--input-res', type=int, default=224)
-parser.add_argument('--brainpp', action='store_true', help='On brainpp or not')
-parser.add_argument('--train_json', type=str, help='path to train nori json')
-parser.add_argument('--val_json', type=str, help='path to val nori json')
-parser.add_argument('--trainval', action='store_true', help='how to train')
 parser.add_argument('--pretrained', default='', type=str,
                     help='path to moco pretrained checkpoint')
 parser.add_argument('--no_distill_epoch', default=5, type=int, help='epoch before distill')
@@ -85,9 +80,6 @@ def main():
 
     traindir = os.path.join(args.data_path, 'train')
     valdir = os.path.join(args.data_path, 'val')
-    if args.trainval:
-        traindir = os.path.join(args.data_path, 'trainval')
-        valdir = os.path.join(args.data_path, 'test/labeled')
         
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
@@ -112,31 +104,13 @@ def main():
                                        )
 
     num_classes = len(train_dataset.classes)
-    if args.brainpp:
-        assert args.train_json is not None
-        assert args.val_json is not None
-        from nori_util import get_img, get_sample_list_from_json, get_num_class_from_json
-        train_samples = get_sample_list_from_json(args.train_json)
-        train_dataset.samples = train_samples
-        train_dataset.loader = get_img
-        val_samples = get_sample_list_from_json(args.val_json)
-        val_dataset.samples = val_samples
-        val_dataset.loader = get_img
-
-        num_classes = get_num_class_from_json(args.train_json)
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                                num_workers=args.workers, pin_memory=True, sampler=None)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
                                              num_workers=args.workers, pin_memory=True)
                                              
-    if args.net_type == 'mobilenet':
-        t_net = ResNet.resnet50(pretrained=True)
-        s_net = Mov.MobileNet()
-    elif args.net_type == 'resnet':
-        t_net = ResNet.resnet152(pretrained=True)
-        s_net = ResNet.resnet50(pretrained=False)
-    elif args.net_type == 'self_sup':
+    if args.net_type == 'self_sup':
         t_net = ResNet.resnet50(pretrained=False, num_classes=num_classes)
         s_net = ResNet.resnet50(pretrained=False, num_classes=num_classes)
         # load from pre-trained, before DistributedDataParallel constructor
@@ -185,10 +159,6 @@ def main():
             print(set(msg.missing_keys))
     elif args.net_type == 'r50':
         s_net = ResNet.resnet50(pretrained=False, num_classes=num_classes)
-    elif args.net_type == 'r50_inpretrain':
-        s_net = ResNet.resnet50(pretrained=True)
-        fc_dim = s_net.fc.weight.shape[1]
-        s_net.fc = torch.nn.Linear(fc_dim, num_classes)
     else:
         print('undefined network type !!!')
         raise

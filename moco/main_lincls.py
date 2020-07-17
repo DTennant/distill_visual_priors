@@ -81,11 +81,7 @@ parser.add_argument('--pretrained', default='', type=str,
                     help='path to moco pretrained checkpoint')
 
 parser.add_argument('--save-path', type=str, help='where to save the checkpoints')
-parser.add_argument('--trainval', action='store_true', help='how to train')
 parser.add_argument('--input-res', type=int, default=224)
-parser.add_argument('--brainpp', action='store_true', help='On brainpp or not')
-parser.add_argument('--train_json', type=str, help='path to train nori json')
-parser.add_argument('--val_json', type=str, help='path to val nori json')
 
 best_acc1 = 0
 
@@ -253,9 +249,6 @@ def main_worker(gpu, ngpus_per_node, args):
     # Data loading code
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
-    if args.trainval:
-        traindir = os.path.join(args.data, 'trainval')
-        valdir = os.path.join(args.data, 'test/labeled')
         
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
@@ -275,16 +268,6 @@ def main_worker(gpu, ngpus_per_node, args):
             normalize,
         ]))
 
-    if args.brainpp:
-        assert args.train_json is not None
-        assert args.val_json is not None
-        from nori_util import get_img, get_sample_list_from_json
-        train_samples = get_sample_list_from_json(args.train_json)
-        train_dataset.samples = train_samples
-        train_dataset.loader = get_img
-        val_samples = get_sample_list_from_json(args.val_json)
-        val_dataset.samples = val_samples
-        val_dataset.loader = get_img
         
 
     if args.distributed:
@@ -344,13 +327,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         [batch_time, data_time, losses, top1, top5],
         prefix="Epoch: [{}]".format(epoch))
 
-    """
-    Switch to eval mode:
-    Under the protocol of linear classification on frozen features/models,
-    it is not legitimate to change any part of the pre-trained model.
-    BatchNorm in train mode may revise running mean/std (even if it receives
-    no gradient), which are part of the model parameters too.
-    """
     model.eval()
 
     end = time.time()
