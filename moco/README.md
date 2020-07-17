@@ -3,7 +3,8 @@
 
 ### Preparation
 
-Install PyTorch and ImageNet dataset following the [official PyTorch ImageNet training code](https://github.com/pytorch/examples/tree/master/imagenet).
+1. Install PyTorch
+2. Following [Competition toolkits](https://github.com/VIPriors/vipriors-challenges-toolkit/tree/master/image-classification) to set up the dataset.
 
 
 ### Unsupervised Training
@@ -17,7 +18,7 @@ python main_moco.py \
   --lr 0.03 \
   --batch-size 256 \
   --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --world-size 1 --rank 0 \
-  [your imagenet-folder with train and val folders]
+  [your dataset-folder with train and val folders]
 ```
 This script uses all the default hyper-parameters as described in the MoCo v1 paper. To run MoCo v2, set `--mlp --moco-t 0.2 --aug-plus --cos`.
 
