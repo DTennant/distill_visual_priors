@@ -1,20 +1,20 @@
 # distill_visual_priors
 
-This is the third place solution to ECCV 2020 workshop VIPriors Image Classification Challenge.
+This is the 3rd place solution of ECCV 2020 workshop VIPriors Image Classification Challenge.
 
 ## Usage
 
-Our solution contains a two phase pipeline, **and we only uses the provided dataset, no external data or checkpoint is used in our solution.**
+Our solution presents a two-phase pipeline, and **we only use the provided subset of ImageNet, no external data or checkpoint is used in our solution.**
 
 ### Phase-1
 
-Unsupervised pretraining.
+Self-supervised pretraining.
 
-follow the instruction in the `moco` folder.
+Please follow the instructions in the `moco` folder.
 
 ### Phase-2
 
-Distillation and classification finetuning.
+Self-distillation and classification finetuning.
 
 ```bash
 cd sup_train_distill
