@@ -2,9 +2,7 @@
 
 This is the 3rd place solution of ECCV 2020 workshop VIPriors Image Classification Challenge.
 
-![UynwA1.png](https://s1.ax1x.com/2020/07/17/UynwA1.png)
-
-The two phases of our proposed method. The first phase is to construct a useful visual prior with self-supervised contrastive learning, and the second phase is to perform self-distillation on the pre-trained checkpoint. The student model is trained with a distillation loss and a classification loss, while the teacher model is frozen.
+![U6i0Pg.png](https://s1.ax1x.com/2020/07/17/U6i0Pg.png)
 
 ## Usage
 
