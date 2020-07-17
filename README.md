@@ -1,6 +1,6 @@
 # distill_visual_priors
 
-This is a third place solution to ECCV 2020 workshop VIPriors Image Classification Challenge.
+This is the third place solution to ECCV 2020 workshop VIPriors Image Classification Challenge.
 
 ## Usage
 
