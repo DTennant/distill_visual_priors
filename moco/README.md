@@ -4,14 +4,14 @@
 ### Preparation
 
 1. Install PyTorch
-2. Following [Competition toolkits](https://github.com/VIPriors/vipriors-challenges-toolkit/tree/master/image-classification) to set up the dataset.
+2. Follow the instructions in [Competition toolkits](https://github.com/VIPriors/vipriors-challenges-toolkit/tree/master/image-classification) to set up the dataset.
 
 
-### Unsupervised Training
+### Self-supervised Pre-training
 
 This implementation only supports **multi-gpu**, **DistributedDataParallel** training, which is faster and simpler; single-gpu or DataParallel training is not supported.
 
-To do unsupervised pre-training of a ResNet-50 model on ImageNet in an 8-gpu machine, run:
+To conduct self-supervised pre-training with a ResNet-50 model on ImageNet on an 8-gpu machine, run:
 ```
 python main_moco.py \
   -a resnet50 \
