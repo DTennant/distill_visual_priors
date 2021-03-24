@@ -1,4 +1,5 @@
 # distill_visual_priors
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/distilling-visual-priors-from-self-supervised/object-classification-on-imagenet-vipriors)](https://paperswithcode.com/sota/object-classification-on-imagenet-vipriors?p=distilling-visual-priors-from-self-supervised)
 
 This is the 2nd place solution of ECCV 2020 workshop VIPriors Image Classification Challenge.
 
