@@ -27,6 +27,22 @@ cd sup_train_distill
 python3 train_selfsup.py --data_path /path/to/data/ --net_type self_sup_r50 --input-res 448 --pretrained /path/to/unsupervise_pretrained_checkpoint --save_path /path/to/save --batch_size 256 --autoaug --label_smooth
 ```
 
+## Citations
+
+Please consider citing our paper in your publications if the project helps your research. BibTeX reference is as follow.
+
+```
+@inproceedings{zhao2020distilling,
+  title={Distilling visual priors from self-supervised learning},
+  author={Zhao, Bingchen and Wen, Xin},
+  booktitle={European Conference on Computer Vision},
+  pages={422--429},
+  year={2020},
+  organization={Springer}
+}
+```
+
+
 ## Contact
 
 Bingchen Zhao: zhaobc.gm@gmail.com
